@@ -17,10 +17,8 @@ while ($row = $categories_result->fetch_assoc()) {
 }
 
 // Build the search query
-$search_term = isset($_GET['search']) ? $_GET['search'] : '';
-$category_filter = isset($_GET['category']) ? $_GET['category'] : '';
-$teacher_filter = isset($_GET['teacher']) ? $_GET['teacher'] : '';
 
+// 1. Start with the Base SELECT and JOINs
 $query = "
     SELECT 
         Skills.Skill_ID,
@@ -29,36 +27,48 @@ $query = "
         Skills.Category,
         Users.User_ID,
         Users.Username,
-        Users.Name AS TeacherName
+        Users.Name AS TeacherName,
+        AVG(Reviews.Rating) AS Avg_Rating,
+        COUNT(Reviews.Review_ID) AS Review_Count
     FROM Skills
     JOIN UserSkills ON Skills.Skill_ID = UserSkills.Skill_ID
     JOIN Users ON UserSkills.User_ID = Users.User_ID
-    WHERE 1=1
+    LEFT JOIN Reviews ON Users.User_ID = Reviews.Teacher_ID 
+    AND Skills.Skill_ID = Reviews.Skill_ID
 ";
 
+// 2. Handle WHERE filters BEFORE Grouping
+$where_clauses = [];
 $params = [];
 $types = "";
 
 if (!empty($search_term)) {
-    $query .= " AND (Skills.Title LIKE ? OR Skills.Description LIKE ?)";
+    $where_clauses[] = "(Skills.Title LIKE ? OR Skills.Description LIKE ?)";
     $params[] = "%$search_term%";
     $params[] = "%$search_term%";
     $types .= "ss";
 }
 
 if (!empty($category_filter)) {
-    $query .= " AND Skills.Category = ?";
+    $where_clauses[] = "Skills.Category = ?";
     $params[] = $category_filter;
     $types .= "s";
 }
 
 if (!empty($teacher_filter)) {
-    $query .= " AND (Users.Name LIKE ? OR Users.Username LIKE ?)";
+    $where_clauses[] = "(Users.Name LIKE ? OR Users.Username LIKE ?)";
     $params[] = "%$teacher_filter%";
     $params[] = "%$teacher_filter%";
     $types .= "ss";
 }
 
+// Construct the WHERE part if filters exist
+if (!empty($where_clauses)) {
+    $query .= " WHERE " . implode(" AND ", $where_clauses);
+}
+
+// 3. Append GROUP BY and ORDER BY at the very end
+$query .= " GROUP BY Skills.Skill_ID, Users.User_ID";
 $query .= " ORDER BY Skills.Title ASC";
 
 $stmt = $conn->prepare($query);
@@ -125,6 +135,7 @@ $result = $stmt->get_result();
                         <th style="padding: 12px;">Category</th>
                         <th style="padding: 12px;">Description</th>
                         <th style="padding: 12px;">Teacher</th>
+                        <th style="padding: 12px;">Rating</th>
                         <th style="padding: 12px;">Action</th>
                     </tr>
                 </thead>
@@ -135,6 +146,14 @@ $result = $stmt->get_result();
                             <td style="padding: 12px;"><?php echo htmlspecialchars($row['Category']); ?></td>
                             <td style="padding: 12px;"><?php echo htmlspecialchars($row['Description']); ?></td>
                             <td style="padding: 12px;"><?php echo htmlspecialchars($row['TeacherName']); ?></td>
+
+                            <td style="padding: 12px;">
+                                <?php echo $row['Avg_Rating'] ? 
+                                    number_format($row['Avg_Rating'], 1) . " / 5 (" . $row['Review_Count'] . " reviews)" : 
+                                    "No ratings yet"; 
+                                ?>
+                            </td>
+
                             <td style="padding: 12px;">
                                 <?php if ($row['User_ID'] != $user_id): ?>
                                     <form method="POST" action="create_request.php">
