@@ -19,37 +19,50 @@ $user = $stmt->get_result()->fetch_assoc();
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dashboard</title>
+    <title>Dashboard - Campus Skill Exchange</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<h1>Dashboard</h1>
+<div class="container">
+    <div class="center">
+        <h1>Welcome, <?php echo htmlspecialchars($user['Name']); ?>!</h1>
+        <p>Logged in as: <?php echo htmlspecialchars($user['Username']); ?></p>
+    </div>
 
-<p>
-    Welcome, 
-    <?php echo htmlspecialchars($user['Name']); ?> 
-    (<?php echo htmlspecialchars($user['Username']); ?>)
-</p>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        
+        <div class="card">
+            <h3>Skills & Learning</h3>
+            <p>Ready to learn something new or share your expertise?</p>
+            <a href="skills.php" class="btn primary">Browse All Skills</a>
+        </div>
 
-<hr>
+        <div class="card">
+            <h3>Requests</h3>
+            <p>Manage your incoming and outgoing session requests.</p>
+            <a href="requests.php" class="btn primary">My Requests</a>
+        </div>
 
-<h3>Account</h3>
-<a href="profile.php">View / Edit Profile</a>
+        <div class="card">
+            <h3>Account</h3>
+            <p>Update your personal information and password.</p>
+            <a href="profile.php" class="btn primary">View Profile</a>
+        </div>
 
-<hr>
+        <div class="card">
+            <h3>Feedback</h3>
+            <p>See what others are saying about you or leave a review.</p>
+            <a href="reviews.php" class="btn primary">Reviews</a>
+        </div>
 
-<h3>Requests</h3>
-<a href="requests.php">View My Requests</a><br>
-<a href="skills.php">Browse Skills</a>
+    </div>
 
-<hr>
-
-<h3>Reviews</h3>
-<a href="reviews.php">My Reviews</a>
-
-<hr>
-
-<a href="logout.php">Logout</a>
+    <hr>
+    <div class="center">
+        <a href="logout.php" class="btn secondary">Logout</a>
+    </div>
+</div>
 
 </body>
 </html>

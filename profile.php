@@ -37,9 +37,10 @@ if (isset($_POST['change_password'])) {
     $stmt->execute();
     $result = $stmt->get_result()->fetch_assoc();
 
-    if ($result && $result['Password'] === $current_password) {
+    if ($result && password_verify($current_password, $result['Password'])) {
+        $hashed_new_password = password_hash($new_password, PASSWORD_DEFAULT);
         $stmt = $conn->prepare("UPDATE Users SET Password=? WHERE User_ID=?");
-        $stmt->bind_param("ss", $new_password, $user_id);
+        $stmt->bind_param("ss", $hashed_new_password, $user_id);
         $stmt->execute();
 
         $password_message = "Password updated successfully.";

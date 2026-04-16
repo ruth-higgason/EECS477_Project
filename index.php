@@ -1,4 +1,3 @@
-
 <?php
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -20,7 +19,7 @@ if (isset($_POST['login'])) {
     if ($result->num_rows === 1) {
         $user = $result->fetch_assoc();
 
-        if ($_POST['password'] === $user['Password']) {
+        if (password_verify($_POST['password'], $user['Password'])) {
             $_SESSION['user_id'] = $user['User_ID'];
             header("Location: dashboard.php");
             exit();
@@ -37,7 +36,7 @@ if (isset($_POST['register'])) {
 
     $user_id = uniqid();
 
-    $hashedPassword = $_POST['password'];
+    $hashedPassword = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
     $stmt = $conn->prepare("
         INSERT INTO Users (Username, Name, Email, Major, Password)
@@ -69,21 +68,29 @@ if (isset($_POST['register'])) {
 </head>
 <body>
 
-<div class="container center">
-    <h1>Campus Skill Exchange</h1>
-    <p>Login or create an account</p>
+<div class="container">
+    <div class="center">
+        <h1>Campus Skill Exchange</h1>
+        <p>Login or create an account</p>
+    </div>
 
-    <p style="color:red;"><?php echo $message; ?></p>
+    <?php if (!empty($message)): ?>
+        <div class="card" style="text-align: center; border: 1px solid #ccc;">
+            <p style="color:red;"><b><?php echo $message; ?></b></p>
+        </div>
+    <?php endif; ?>
 
-    <div style="display:flex; gap:40px; justify-content:center;">
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
 
         <!-- LOGIN -->
         <div class="card">
             <h2>Login</h2>
             <form method="POST">
-                <input type="email" name="email" placeholder="Email" required><br><br>
-                <input type="password" name="password" placeholder="Password" required><br><br>
-                <button name="login">Login</button>
+                Email:<br>
+                <input type="email" name="email" placeholder="Email" required style="width: 100%; padding: 8px; margin: 8px 0;"><br>
+                Password:<br>
+                <input type="password" name="password" placeholder="Password" required style="width: 100%; padding: 8px; margin: 8px 0;"><br><br>
+                <button name="login" class="btn primary" style="width: 100%;">Login</button>
             </form>
         </div>
 
@@ -91,12 +98,17 @@ if (isset($_POST['register'])) {
         <div class="card">
             <h2>Register</h2>
             <form method="POST">
-                <input type="text" name="name" placeholder="Name" required><br><br>
-                <input type="text" name="username" placeholder="Username" required><br><br>
-                <input type="email" name="email" placeholder="Email" required><br><br>
-                <input type="text" name="major" placeholder="Major" required><br><br>
-                <input type="password" name="password" placeholder="Password" required><br><br>
-                <button name="register">Create Account</button>
+                Full Name:<br>
+                <input type="text" name="name" placeholder="Name" required style="width: 100%; padding: 8px; margin: 8px 0;"><br>
+                Username:<br>
+                <input type="text" name="username" placeholder="Username" required style="width: 100%; padding: 8px; margin: 8px 0;"><br>
+                Email:<br>
+                <input type="email" name="email" placeholder="Email" required style="width: 100%; padding: 8px; margin: 8px 0;"><br>
+                Major:<br>
+                <input type="text" name="major" placeholder="Major" required style="width: 100%; padding: 8px; margin: 8px 0;"><br>
+                Password:<br>
+                <input type="password" name="password" placeholder="Password" required style="width: 100%; padding: 8px; margin: 8px 0;"><br><br>
+                <button name="register" class="btn primary" style="width: 100%;">Create Account</button>
             </form>
         </div>
 
