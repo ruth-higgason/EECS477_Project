@@ -66,10 +66,11 @@ $rating = $stmt->get_result()->fetch_assoc();
    REVIEWS
 ========================= */
 $stmt = $conn->prepare("
-    SELECT Rating, Comment
+    SELECT Reviews.Rating, Reviews.Comment, Users.Username
     FROM Reviews
-    WHERE Teacher_ID=?
-    ORDER BY Review_ID DESC
+    JOIN Users ON Reviews.Reviewer_ID = Users.User_ID
+    WHERE Reviews.Teacher_ID=?
+    ORDER BY Reviews.Review_ID DESC
 ");
 $stmt->bind_param("s", $teacher_id);
 $stmt->execute();
@@ -89,76 +90,125 @@ $stmt->execute();
 $other_skills = $stmt->get_result();
 
 /* =========================
-   FINAL SUBMISSION (DISABLED)
+   PREVENT DUPLICATE REQUEST
 ========================= */
-if (isset($_POST['confirm_request'])) {
-    // DO NOTHING FOR NOW
-    // placeholder so form still submits safely
+$check_stmt = $conn->prepare("
+    SELECT Request_ID FROM Requests 
+    WHERE Requester_ID=? AND Teacher_ID=? AND Skill_ID=?
+");
+$check_stmt->bind_param("sss", $requester_id, $teacher_id, $skill_id);
+$check_stmt->execute();
+$existing_request = $check_stmt->get_result()->fetch_assoc();
 
-    echo "<p><b>Request system is currently disabled.</b></p>";
+/* =========================
+   FINAL SUBMISSION
+========================= */
+$success = false;
+$error = "";
+
+if ($existing_request) {
+    $error = "You have already sent a request for this skill to this teacher.";
+} elseif (isset($_POST['confirm_request'])) {
+    $stmt = $conn->prepare("
+        INSERT INTO Requests (Requester_ID, Teacher_ID, Skill_ID, Status, Date)
+        VALUES (?, ?, ?, 'Pending', CURDATE())
+    ");
+    $stmt->bind_param("sss", $requester_id, $teacher_id, $skill_id);
+
+    if ($stmt->execute()) {
+        $success = true;
+    } else {
+        $error = "Error: " . $stmt->error;
+    }
 }
 ?>
 
-<h1>Confirm Request</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Confirm Request - Campus Skill Exchange</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
 
-<a href="skills.php">Back</a>
+<div class="container">
+    <?php if ($success): ?>
+        <h2>Request sent successfully!</h2>
+        <p>You have successfully requested help with <b><?php echo htmlspecialchars($skill['Title']); ?></b> from <b><?php echo htmlspecialchars($teacher['Name']); ?></b>.</p>
+        <p>
+            <a href="requests.php">View My Requests</a> | 
+            <a href="skills.php">Back to Skills</a>
+        </p>
+    <?php else: ?>
+        <?php if (!empty($error)): ?>
+            <p style="color:red;"><b><?php echo htmlspecialchars($error); ?></b></p>
+            <?php if ($existing_request): ?>
+                <p><a href="skills.php">Back to Browse</a> | <a href="requests.php">View My Requests</a></p>
+            <?php endif; ?>
+        <?php endif; ?>
 
-<hr>
+        <?php if (!$existing_request): ?>
+            <h1>Confirm Request</h1>
+            
+            <p>
+                <b>Skill:</b> <?php echo htmlspecialchars($skill['Title']); ?><br>
+                <b>Category:</b> <?php echo htmlspecialchars($skill['Category']); ?><br>
+                <b>Teacher:</b> <?php echo htmlspecialchars($teacher['Name']); ?> (<?php echo htmlspecialchars($teacher['Username']); ?>)
+            </p>
 
-<!-- SKILL -->
-<h2>Skill</h2>
-<p><b><?php echo htmlspecialchars($skill['Title']); ?></b></p>
-<p><?php echo htmlspecialchars($skill['Description']); ?></p>
-<p><b>Category:</b> <?php echo htmlspecialchars($skill['Category']); ?></p>
+            <a href="skills.php" class="btn secondary">Back to Browse</a>
 
-<hr>
+            <hr>
 
-<!-- TEACHER -->
-<h2>Provider</h2>
-<p><b>Name:</b> <?php echo htmlspecialchars($teacher['Name']); ?></p>
-<p><b>Username:</b> <?php echo htmlspecialchars($teacher['Username']); ?></p>
-<p><b>Major:</b> <?php echo htmlspecialchars($teacher['Major']); ?></p>
+            <div class="card">
+                <h3>Skill Description</h3>
+                <p><?php echo htmlspecialchars($skill['Description']); ?></p>
+            </div>
 
-<p>
-<b>Average Rating:</b>
-<?php echo $rating['avg_rating'] ? round($rating['avg_rating'], 2) : "No ratings yet"; ?>
-</p>
+            <div class="card">
+                <h3>Provider Info</h3>
+                <p>Major: <?php echo htmlspecialchars($teacher['Major']); ?></p>
+                <p>Average Rating: <?php echo $rating['avg_rating'] ? round($rating['avg_rating'], 2) . " / 5" : "No ratings yet"; ?></p>
+            </div>
 
-<hr>
+            <div class="card">
+                <h3>Other Skills They Have</h3>
+                <ul>
+                <?php while ($row = $other_skills->fetch_assoc()): ?>
+                    <li><?php echo htmlspecialchars($row['Title']); ?></li>
+                <?php endwhile; ?>
+                </ul>
+            </div>
 
-<!-- OTHER SKILLS -->
-<h2>Other Skills They Have</h2>
-<ul>
-<?php while ($row = $other_skills->fetch_assoc()): ?>
-    <li><?php echo htmlspecialchars($row['Title']); ?></li>
-<?php endwhile; ?>
-</ul>
+            <div class="card">
+                <h3>Recent Reviews</h3>
+                <?php if ($reviews->num_rows == 0): ?>
+                    <p>No reviews yet.</p>
+                <?php else: ?>
+                    <ul>
+                    <?php while ($row = $reviews->fetch_assoc()): ?>
+                        <li>
+                            <b><?php echo $row['Rating']; ?>/5</b> - 
+                            <?php echo htmlspecialchars($row['Comment']); ?> 
+                            (by <?php echo htmlspecialchars($row['Username']); ?>)
+                        </li>
+                    <?php endwhile; ?>
+                    </ul>
+                <?php endif; ?>
+            </div>
 
-<hr>
+            <hr>
 
-<!-- REVIEWS -->
-<h2>Reviews</h2>
-<?php if ($reviews->num_rows == 0): ?>
-    <p>No reviews yet.</p>
-<?php else: ?>
-    <ul>
-    <?php while ($row = $reviews->fetch_assoc()): ?>
-        <li>
-            <?php echo $row['Rating']; ?> -
-            <?php echo htmlspecialchars($row['Comment']); ?>
-        </li>
-    <?php endwhile; ?>
-    </ul>
-<?php endif; ?>
+            <form method="POST">
+                <input type="hidden" name="skill_id" value="<?php echo htmlspecialchars($skill_id); ?>">
+                <input type="hidden" name="teacher_id" value="<?php echo htmlspecialchars($teacher_id); ?>">
+                <button type="submit" name="confirm_request" class="btn primary">
+                    Confirm and Send Request
+                </button>
+            </form>
+        <?php endif; ?>
+    <?php endif; ?>
+</div>
 
-<hr>
-
-<!-- CONFIRM BUTTON (SAFE PLACEHOLDER) -->
-<form method="POST">
-    <button type="submit" name="confirm_request">
-        Request (Disabled for now)
-    </button>
-</form>
-
-<br>
-<a href="skills.php">Cancel</a>
+</body>
+</html>

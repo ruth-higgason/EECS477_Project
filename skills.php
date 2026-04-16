@@ -9,10 +9,19 @@ if (!isset($_SESSION['user_id'])) {
 
 $user_id = $_SESSION['user_id'];
 
-/* =========================
-   GET ALL SKILLS + OWNERS
-========================= */
-$stmt = $conn->prepare("
+// Get unique categories for the filter dropdown
+$categories_result = $conn->query("SELECT DISTINCT Category FROM Skills ORDER BY Category");
+$categories = [];
+while ($row = $categories_result->fetch_assoc()) {
+    $categories[] = $row['Category'];
+}
+
+// Build the search query
+$search_term = isset($_GET['search']) ? $_GET['search'] : '';
+$category_filter = isset($_GET['category']) ? $_GET['category'] : '';
+$teacher_filter = isset($_GET['teacher']) ? $_GET['teacher'] : '';
+
+$query = "
     SELECT 
         Skills.Skill_ID,
         Skills.Title,
@@ -20,92 +29,130 @@ $stmt = $conn->prepare("
         Skills.Category,
         Users.User_ID,
         Users.Username,
-        Users.Name
+        Users.Name AS TeacherName
     FROM Skills
-    LEFT JOIN UserSkills ON Skills.Skill_ID = UserSkills.Skill_ID
-    LEFT JOIN Users ON UserSkills.User_ID = Users.User_ID
-    ORDER BY Skills.Category, Skills.Title
-");
+    JOIN UserSkills ON Skills.Skill_ID = UserSkills.Skill_ID
+    JOIN Users ON UserSkills.User_ID = Users.User_ID
+    WHERE 1=1
+";
+
+$params = [];
+$types = "";
+
+if (!empty($search_term)) {
+    $query .= " AND (Skills.Title LIKE ? OR Skills.Description LIKE ?)";
+    $params[] = "%$search_term%";
+    $params[] = "%$search_term%";
+    $types .= "ss";
+}
+
+if (!empty($category_filter)) {
+    $query .= " AND Skills.Category = ?";
+    $params[] = $category_filter;
+    $types .= "s";
+}
+
+if (!empty($teacher_filter)) {
+    $query .= " AND (Users.Name LIKE ? OR Users.Username LIKE ?)";
+    $params[] = "%$teacher_filter%";
+    $params[] = "%$teacher_filter%";
+    $types .= "ss";
+}
+
+$query .= " ORDER BY Skills.Title ASC";
+
+$stmt = $conn->prepare($query);
+if (!empty($params)) {
+    $stmt->bind_param($types, ...$params);
+}
 $stmt->execute();
 $result = $stmt->get_result();
-
-/* Organize data so each skill groups its users */
-$skills = [];
-
-while ($row = $result->fetch_assoc()) {
-    $id = $row['Skill_ID'];
-
-    if (!isset($skills[$id])) {
-        $skills[$id] = [
-            "Title" => $row["Title"],
-            "Description" => $row["Description"],
-            "Category" => $row["Category"],
-            "Users" => []
-        ];
-    }
-
-    if ($row["User_ID"]) {
-        $skills[$id]["Users"][] = [
-            "User_ID" => $row["User_ID"],
-            "Username" => $row["Username"],
-            "Name" => $row["Name"]
-        ];
-    }
-}
 ?>
 
-<h1>Browse Skills</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browse Skills - Campus Skill Exchange</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
 
-<a href="dashboard.php">Back to Dashboard</a>
+<div class="container">
+    <h1>Browse Skills</h1>
+    <a href="dashboard.php">Back to Dashboard</a>
+    <hr>
 
-<hr>
-
-<?php if (count($skills) == 0): ?>
-    <p>No skills available.</p>
-<?php else: ?>
-
-    <?php foreach ($skills as $skill): ?>
-        <div style="border:1px solid #ccc; padding:10px; margin-bottom:10px;">
-
-            <h3><?php echo htmlspecialchars($skill['Title']); ?></h3>
-
-            <p>
-                <b>Category:</b> <?php echo htmlspecialchars($skill['Category']); ?>
-            </p>
-
-            <p>
-                <?php echo htmlspecialchars($skill['Description']); ?>
-            </p>
-
-            <p><b>Offered by:</b></p>
-
-            <?php if (count($skill["Users"]) == 0): ?>
-                <p><i>No users currently offer this skill</i></p>
-            <?php else: ?>
-                <ul>
-                    <?php foreach ($skill["Users"] as $user): ?>
-                        <li>
-                            <?php echo htmlspecialchars($user["Username"]); ?>
-                            (<?php echo htmlspecialchars($user["Name"]); ?>)
-
-                            <?php if ($user["User_ID"] != $user_id): ?>
-            			<form method="POST" action="create_request.php" style="display:inline;">
-    				   <input type="hidden" name="skill_id" value="<?php echo $skill['Skill_ID']; ?>">
-    				   <input type="hidden" name="teacher_id" value="<?php echo $user['User_ID']; ?>">
-    				   <button type="submit">Request</button>
-				</form>        		
-			    <?php else: ?>
-            			<i>(Your skill)</i>
-        		    <?php endif; ?>                        
-		      </li>
+    <!-- Search and Filter Form -->
+    <div class="card">
+        <h3>Filter Skills</h3>
+        <form method="GET" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
+            <div>
+                Search:<br>
+                <input type="text" name="search" value="<?php echo htmlspecialchars($search_term); ?>" placeholder="Title or Description">
+            </div>
+            <div>
+                Category:<br>
+                <select name="category">
+                    <option value="">All Categories</option>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?php echo htmlspecialchars($cat); ?>" <?php if ($category_filter == $cat) echo 'selected'; ?>>
+                            <?php echo htmlspecialchars($cat); ?>
+                        </option>
                     <?php endforeach; ?>
-                </ul>
-            <?php endif; ?>
+                </select>
+            </div>
+            <div>
+                Teacher:<br>
+                <input type="text" name="teacher" value="<?php echo htmlspecialchars($teacher_filter); ?>" placeholder="Teacher Name">
+            </div>
+            <div>
+                <button type="submit" class="btn primary">Apply Filters</button>
+                <a href="skills.php" class="btn secondary">Clear</a>
+            </div>
+        </form>
+    </div>
 
+    <hr>
+
+    <?php if ($result->num_rows == 0): ?>
+        <p>No skills found matching your criteria.</p>
+    <?php else: ?>
+        <div class="card" style="padding: 0; overflow: hidden;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #2c5aa0; color: white; text-align: left;">
+                        <th style="padding: 12px;">Skill</th>
+                        <th style="padding: 12px;">Category</th>
+                        <th style="padding: 12px;">Description</th>
+                        <th style="padding: 12px;">Teacher</th>
+                        <th style="padding: 12px;">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ($row = $result->fetch_assoc()): ?>
+                        <tr style="border-bottom: 1px solid #eee;">
+                            <td style="padding: 12px;"><b><?php echo htmlspecialchars($row['Title']); ?></b></td>
+                            <td style="padding: 12px;"><?php echo htmlspecialchars($row['Category']); ?></td>
+                            <td style="padding: 12px;"><?php echo htmlspecialchars($row['Description']); ?></td>
+                            <td style="padding: 12px;"><?php echo htmlspecialchars($row['TeacherName']); ?></td>
+                            <td style="padding: 12px;">
+                                <?php if ($row['User_ID'] != $user_id): ?>
+                                    <form method="POST" action="create_request.php">
+                                        <input type="hidden" name="skill_id" value="<?php echo $row['Skill_ID']; ?>">
+                                        <input type="hidden" name="teacher_id" value="<?php echo $row['User_ID']; ?>">
+                                        <button type="submit" class="btn primary">Request</button>
+                                    </form>
+                                <?php else: ?>
+                                    <span style="color: #888;"><i>Your Skill</i></span>
+                                <?php endif; ?>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                </tbody>
+            </table>
         </div>
-    <?php endforeach; ?>
+    <?php endif; ?>
+</div>
 
-<?php endif; ?>
-
-<br>
-<a href="dashboard.php">Back to Dashboard</a>
+</body>
+</html>

@@ -123,105 +123,132 @@ $user_skills = $stmt->get_result();
 $all_skills = $conn->query("SELECT Skill_ID, Title FROM Skills");
 ?>
 
-<h1>My Profile</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Profile - Campus Skill Exchange</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
 
-<!-- =========================
-     ACCOUNT INFO
-========================= -->
-<h2>Account Info</h2>
+<div class="container">
+    <h1>My Profile</h1>
+    <a href="dashboard.php">Back to Dashboard</a>
+    <hr>
 
-<form method="POST">
-    Username:<br>
-    <input type="text" name="username" value="<?php echo htmlspecialchars($user['Username']); ?>"><br><br>
+    <!-- =========================
+         ACCOUNT INFO
+    ========================= -->
+    <div class="card">
+        <h2>Account Info</h2>
 
-    Name:<br>
-    <input type="text" name="name" value="<?php echo htmlspecialchars($user['Name']); ?>"><br><br>
+        <form method="POST">
+            Username:<br>
+            <input type="text" name="username" value="<?php echo htmlspecialchars($user['Username']); ?>"><br><br>
 
-    Email:<br>
-    <input type="email" name="email" value="<?php echo htmlspecialchars($user['Email']); ?>"><br><br>
+            Name:<br>
+            <input type="text" name="name" value="<?php echo htmlspecialchars($user['Name']); ?>"><br><br>
 
-    Major:<br>
-    <input type="text" name="major" value="<?php echo htmlspecialchars($user['Major']); ?>"><br><br>
+            Email:<br>
+            <input type="email" name="email" value="<?php echo htmlspecialchars($user['Email']); ?>"><br><br>
 
-    <button type="submit" name="update_profile">Update Profile</button>
-</form>
+            Major:<br>
+            <input type="text" name="major" value="<?php echo htmlspecialchars($user['Major']); ?>"><br><br>
 
-<hr>
-
-<!-- =========================
-     CHANGE PASSWORD
-========================= -->
-<h2>Change Password</h2>
-
-<?php if (!empty($password_message)) echo "<p>$password_message</p>"; ?>
-
-<form method="POST">
-    Current Password:<br>
-    <input type="password" name="current_password" required><br><br>
-
-    New Password:<br>
-    <input type="password" name="new_password" required><br><br>
-
-    <button type="submit" name="change_password">Update Password</button>
-</form>
-
-<hr>
-
-<!-- =========================
-     SKILLS
-========================= -->
-<h2>My Skills</h2>
-
-<ul>
-<?php while ($row = $user_skills->fetch_assoc()): ?>
-    <li>
-        <?php echo htmlspecialchars($row['Title']); ?>
-
-        <form method="POST" style="display:inline;">
-            <input type="hidden" name="skill_id" value="<?php echo $row['Skill_ID']; ?>">
-            <button type="submit" name="delete_skill">Remove</button>
+            <button type="submit" name="update_profile" class="btn primary">Update Profile</button>
         </form>
-    </li>
-<?php endwhile; ?>
-</ul>
+    </div>
 
-<hr>
+    <hr>
 
-<!-- ADD EXISTING SKILL -->
-<h3>Add Existing Skill</h3>
+    <!-- =========================
+         CHANGE PASSWORD
+    ========================= -->
+    <div class="card">
+        <h2>Change Password</h2>
 
-<form method="POST">
-    <select name="skill_id">
-        <?php 
-        $all_skills->data_seek(0);
-        while ($row = $all_skills->fetch_assoc()): ?>
-            <option value="<?php echo $row['Skill_ID']; ?>">
-                <?php echo htmlspecialchars($row['Title']); ?>
-            </option>
-        <?php endwhile; ?>
-    </select>
-    <button type="submit" name="add_existing_skill">Add Skill</button>
-</form>
+        <?php if (!empty($password_message)) echo "<p><b>$password_message</b></p>"; ?>
 
-<hr>
+        <form method="POST">
+            Current Password:<br>
+            <input type="password" name="current_password" required><br><br>
 
-<!-- CREATE NEW SKILL -->
-<h3>Create New Skill</h3>
+            New Password:<br>
+            <input type="password" name="new_password" required><br><br>
 
-<form method="POST">
-    Title:<br>
-    <input type="text" name="title" required><br>
+            <button type="submit" name="change_password" class="btn primary">Update Password</button>
+        </form>
+    </div>
 
-    Description:<br>
-    <input type="text" name="description"><br>
+    <hr>
 
-    Category:<br>
-    <input type="text" name="category"><br><br>
+    <!-- =========================
+         SKILLS
+    ========================= -->
+    <div class="card">
+        <h2>My Skills</h2>
 
-    <button type="submit" name="add_new_skill">Create Skill</button>
-</form>
+        <?php if ($user_skills->num_rows == 0): ?>
+            <p>You haven't added any skills yet.</p>
+        <?php else: ?>
+            <ul>
+            <?php while ($row = $user_skills->fetch_assoc()): ?>
+                <li style="margin-bottom: 5px;">
+                    <?php echo htmlspecialchars($row['Title']); ?>
 
-<br><br>
-<a href="dashboard.php">Back to Dashboard</a>
-<br><br>
-<a href="logout.php">Logout</a>
+                    <form method="POST" style="display:inline; margin-left: 10px;">
+                        <input type="hidden" name="skill_id" value="<?php echo $row['Skill_ID']; ?>">
+                        <button type="submit" name="delete_skill" style="color: red; background: none; border: 1px solid red; cursor: pointer; border-radius: 3px; padding: 2px 5px;">Remove</button>
+                    </form>
+                </li>
+            <?php endwhile; ?>
+            </ul>
+        <?php endif; ?>
+    </div>
+
+    <hr>
+
+    <!-- ADD EXISTING SKILL -->
+    <div class="card">
+        <h3>Add Existing Skill</h3>
+
+        <form method="POST">
+            <select name="skill_id">
+                <?php 
+                $all_skills->data_seek(0);
+                while ($row = $all_skills->fetch_assoc()): ?>
+                    <option value="<?php echo $row['Skill_ID']; ?>">
+                        <?php echo htmlspecialchars($row['Title']); ?>
+                    </option>
+                <?php endwhile; ?>
+            </select>
+            <button type="submit" name="add_existing_skill" class="btn primary">Add Skill</button>
+        </form>
+    </div>
+
+    <hr>
+
+    <!-- CREATE NEW SKILL -->
+    <div class="card">
+        <h3>Create New Skill</h3>
+
+        <form method="POST">
+            Title:<br>
+            <input type="text" name="title" required><br>
+
+            Description:<br>
+            <input type="text" name="description"><br>
+
+            Category:<br>
+            <input type="text" name="category"><br><br>
+
+            <button type="submit" name="add_new_skill" class="btn primary">Create Skill</button>
+        </form>
+    </div>
+
+    <br>
+    <a href="logout.php">Logout</a>
+</div>
+
+</body>
+</html>
