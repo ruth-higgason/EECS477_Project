@@ -17,6 +17,10 @@ while ($row = $categories_result->fetch_assoc()) {
 }
 
 // Build the search query
+$search_term = isset($_GET['search']) ? $_GET['search'] : '';
+$category_filter = isset($_GET['category']) ? $_GET['category'] : '';
+$teacher_filter = isset($_GET['teacher']) ? $_GET['teacher'] : '';
+$min_rating = isset($_GET['min_rating']) ? $_GET['min_rating'] : '';
 
 // 1. Start with the Base SELECT and JOINs
 $query = "
@@ -69,6 +73,11 @@ if (!empty($where_clauses)) {
 
 // 3. Append GROUP BY and ORDER BY at the very end
 $query .= " GROUP BY Skills.Skill_ID, Users.User_ID";
+if (!empty($min_rating)) {
+    $query .= " HAVING Avg_Rating >= ?";
+    $params[] = $min_rating;
+    $types .= "d"; // 'd' for double/decimal
+}
 $query .= " ORDER BY Skills.Title ASC";
 
 $stmt = $conn->prepare($query);
@@ -114,6 +123,16 @@ $result = $stmt->get_result();
             <div>
                 Teacher:<br>
                 <input type="text" name="teacher" value="<?php echo htmlspecialchars($teacher_filter); ?>" placeholder="Teacher Name">
+            </div>
+            <div>
+                Min Rating:<br>
+                <select name="min_rating">
+                    <option value="">Any Rating</option>
+                    <option value="4" <?php if ($min_rating == '4') echo 'selected'; ?>>4+ Stars</option>
+                    <option value="3" <?php if ($min_rating == '3') echo 'selected'; ?>>3+ Stars</option>
+                    <option value="2" <?php if ($min_rating == '2') echo 'selected'; ?>>2+ Stars</option>
+                    <option value="1" <?php if ($min_rating == '1') echo 'selected'; ?>>1+ Stars</option>
+                </select>
             </div>
             <div>
                 <button type="submit" class="btn primary">Apply Filters</button>
