@@ -40,10 +40,10 @@ $stmt = $conn->prepare("
     SELECT 
         Reviews.Rating,
         Reviews.Comment,
-        Users.Username AS reviewer_name,
+        IFNULL (Users.Username, '<Deleted User>') AS reviewer_name,
         Skills.Title AS skill_title
     FROM Reviews
-    JOIN Users ON Reviews.Reviewer_ID = Users.User_ID
+    LEFT JOIN Users ON Reviews.Reviewer_ID = Users.User_ID
     JOIN Skills ON Reviews.Skill_ID = Skills.Skill_ID
     WHERE Reviews.Teacher_ID = ?
     ORDER BY Reviews.Review_ID DESC
