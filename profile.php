@@ -49,6 +49,37 @@ if (isset($_POST['change_password'])) {
     }
 }
 
+/* ========================= 
+    DELETE ACCOUNT
+ ========================= */
+$delete_message = "";
+if (isset($_POST['delete_account'])) {
+    $confirm_password = $_POST['confirm_password'];
+    
+    // 1. Get the current hashed password
+    $stmt = $conn->prepare("SELECT Password FROM Users WHERE User_ID = ?");
+    $stmt->bind_param("s", $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+
+    // 2. Verify password
+    if ($result && password_verify($confirm_password, $result['Password'])) {
+        // 3. Clear the session and delete
+        session_destroy();
+        $stmt = $conn->prepare("DELETE FROM Users WHERE User_ID = ?");
+        $stmt->bind_param("s", $user_id);
+        
+        if ($stmt->execute()) {
+            header("Location: index.php?message=account_deleted");
+            exit();
+        } else {
+            die("Error deleting account: " . $conn->error);
+        }
+    } else {
+        $delete_message = "Incorrect password. Account deletion cancelled.";
+    }
+}
+
 /* =========================
    DELETE SKILL FROM USER
 ========================= */
@@ -244,6 +275,23 @@ $all_skills = $conn->query("SELECT Skill_ID, Title FROM Skills");
             <input type="text" name="category"><br><br>
 
             <button type="submit" name="add_new_skill" class="btn primary">Create Skill</button>
+        </form>
+    </div>
+
+    <!-- DELETE USER ACCOUNT -->
+    <hr>
+    <div class="card card-danger">
+        <h2>Danger Zone</h2>
+        <p>Once you delete your account, there is no going back. Please enter your password to confirm.</p>
+        
+        <?php if (!empty($delete_message)) echo "<p style='color:red;'><b>$delete_message</b></p>"; ?>
+        
+        <form method="POST" onsubmit="return confirm('Are you absolutely sure you want to PERMANENTLY delete your account?');">
+            <input type="password" name="confirm_password" placeholder="Enter password to confirm" required class="input-danger">
+            <br>
+            <button type="submit" name="delete_account" class="btn-danger">
+                Verify & Delete My Account
+            </button>
         </form>
     </div>
 

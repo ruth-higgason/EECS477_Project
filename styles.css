@@ -48,3 +48,46 @@ body {
     background: #f39c12;
     color: white;
 }
+
+/* Danger Zone Styles for Account Deletion */
+.card-danger {
+    border: 1px solid #d9534f;
+    background-color: #fff5f5;
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.card-danger h2 {
+    color: #d9534f;
+    margin-top: 0;
+}
+
+.btn-danger {
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+    background-color: #c9302c;
+}
+
+.input-danger {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #d9534f;
+    border-radius: 4px;
+    box-sizing: border-box; /* Ensures padding doesn't affect width */
+}
+
+.input-danger:focus {
+    outline: none;
+    box-shadow: 0 0 5px rgba(217, 83, 79, 0.5);
+}
